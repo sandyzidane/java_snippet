@@ -13,11 +13,15 @@ public class WaitAndNotifyDemo {
     public static void main(String[] args) {
         Data data = new Data();
 
-        Thread sender = new Thread(new Sender(data));
-        Thread receiver = new Thread(new Receiver(data));
+        for (int i = 0; i < QTY; i++) {
+            String senderName = "sender-" + i;
+            String receiverName = "receiver-" + i;
+            Thread sender = new Thread(new Sender(data), senderName);
+            Thread receiver = new Thread(new Receiver(data), receiverName);
 
-        sender.start();
-        receiver.start();
+            sender.start();
+            receiver.start();
+        }
     }
 }
 
@@ -25,7 +29,7 @@ class Data {
     private String packet;
     private boolean transfer = true;
 
-    public void send(String packet) {
+    public synchronized void send(String packet) {
         while (!transfer) {
             try {
                 wait();
@@ -40,7 +44,7 @@ class Data {
         notifyAll();
     }
 
-    public String receive() {
+    public synchronized String receive() {
         while (transfer) {
             try {
                 wait();
@@ -65,25 +69,20 @@ class Sender implements Runnable {
 
     @Override
     public void run() {
-        String[] packets = {
-                "First",
-                "Second",
-                "Third",
-                "Fourth",
-                "Fifth",
-                "END"
-        };
+        String[] packets = { "First", "Second", "Third", "Fourth", "Fifth", "END" };
 
-        Arrays.stream(packets)
-                .forEach(packet -> {
-                    data.send(packet);
+        Arrays.stream(packets).forEach(packet -> {
+            String tName = Thread.currentThread().getName();
+            System.out.println(tName + " send: " + packet);
 
-                    try {
-                        Thread.sleep(ThreadLocalRandom.current().nextInt(1000, 5000));
-                    } catch (InterruptedException e) {
-                        Thread.currentThread().interrupt();
-                    }
-                });
+            data.send(packet);
+
+            try {
+                Thread.sleep(ThreadLocalRandom.current().nextInt(1000, 5000));
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        });
     }
 }
 
@@ -97,9 +96,10 @@ class Receiver implements Runnable {
     @Override
     public void run() {
         String receive;
+        String tName = Thread.currentThread().getName();
         do {
             receive = data.receive();
-            System.out.println("receive: " + receive);
+            System.out.println("receiver " + tName + " receive: " + receive);
 
             try {
                 Thread.sleep(ThreadLocalRandom.current().nextInt(1000, 5000));
